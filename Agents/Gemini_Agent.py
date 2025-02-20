@@ -14,8 +14,7 @@ class gem_Agent():
     #your observations and your discussions with other agents in the group. Each agent has made distinct observations.
     #Your observations are listed below: """
 
-    ###Flow: Init instruction --> observations --> statement instruction --> statements --> init rating
-    ###  --> discuss instruction --> final rating --> vote
+   
     def __init__(self, observations):
         self.key = os.getenv("GEMINI_KEY")
         self.client = genai.Client(api_key = self.key)
@@ -28,12 +27,14 @@ class gem_Agent():
                         "Final Evaluations": {},
                         }
         
-    def get_response(self, text):
+    def get_response(self, intText):
+        self.context["Context"] = self.context["Context"] + "\n" + intText
+        print("Context: ", self.context["Context"])
         response = self.client.models.generate_content(
             model = self.model,
-            contents = text
+            contents = self.context["Context"]
         )
-        return response
+        return response.text
 
     #def store_context(self):
 
