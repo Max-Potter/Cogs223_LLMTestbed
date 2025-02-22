@@ -1,6 +1,7 @@
 import os
 import re
 
+from HelperFuncs.regexExtractions import get_integer_ratings
 import Instructions.instructions as instructionDoc
 import Instructions.statements as statementDoc
 import Instructions.observations as observationDoc
@@ -31,6 +32,8 @@ class trialExecution():
 
         response = agent.get_response(instruction_Prompt)
         print("Response:", response)
+        statementRatings = get_integer_ratings(self.statements, response)
+        print(statementRatings)
         ##STORE THESE INTEGER RESPONSES IN PRIVATE EVALUATION --> need to do some regex probably?
 
     def discussion_1_round1(self, eligible_Agents):

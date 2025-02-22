@@ -44,12 +44,15 @@ class gem_Agent():
         self.context["Context"] = self.context["Context"] + "\n" + newContext
         
     def get_response(self, intText):
-        self.context["Context"] = self.context["Context"] + "\n" + intText
-        print("Context: ", self.context["Context"])
+        self.update_Context(intText)
+        #self.context["Context"] = self.context["Context"] + "\n" + intText
         response = self.client.models.generate_content(
             model = self.model,
             contents = self.context["Context"]
         )
+        formatted_For_Context = "\n" + "Your Response: " + response.text + "\n"
+        self.update_Context(formatted_For_Context)
+        print("Context: ", self.context["Context"])
         return response.text
 
     #def store_context(self):
