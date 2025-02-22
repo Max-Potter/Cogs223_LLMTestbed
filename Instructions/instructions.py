@@ -1,8 +1,6 @@
 import os
 
-class conditionInstructions():
-    def __init__(self):
-        self.conditionDictionary = {
+conditionDictionary = {
         "InitInstruction": {
             "Baseline":"",
             "Council": """You are a councilmember working with 5 other people in a council. You have each spent some time observing the behavior of John, a person of interest. You will be given multiple statements about John, and you must evaluate their likelihood based on your observations and your discussions with other people in the council. Each person has made distinct observations. Your observations are listed below: """,
