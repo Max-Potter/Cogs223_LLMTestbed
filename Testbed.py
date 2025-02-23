@@ -31,14 +31,45 @@ class trialExecution():
             count += 1
 
         response = agent.get_response(instruction_Prompt)
-        print("Response:", response)
+        
         statementRatings = get_integer_ratings(self.statements, response)
-        print(statementRatings)
-        ##STORE THESE INTEGER RESPONSES IN PRIVATE EVALUATION --> need to do some regex probably?
+        agent.set_InitialEvaluations(statementRatings)
+        
 
-    def discussion_1_round1(self, eligible_Agents):
-        #DISCUSSION -- PROMPT IF LLM HAS ANYTHING TO SAY, THEN LET IT RESPOND OR NOT?
+    def discussion(self, rounds = 2):
+        if self.condition == "Council":
+            eligible_agents = self.agents
+            discussion_Prompt = "\n" + self.instructions["DiscussInstruction"]["Council"] +"\n"
+            for agent in eligible_agents:
+                agent.update_Context(discussion_Prompt)
+            for round in range(rounds):
+                print("Round " + str(round+1))
+                prompt = "It is your turn to speak"
+                for i in range(len(eligible_agents)):
+                    turn_at_talk_agent = eligible_agents[i]
+                    other_agents = eligible_agents[:i]+eligible_agents[i+1:]
+
+                    response = turn_at_talk_agent.get_response(prompt + ". You are Person " + str(i))
+                    formattedResponse = "\n" + "Person " + str(i) + "'s response: " + response
+                    for agent in other_agents:
+                        agent.update_Context(formattedResponse)
+
+
+    def get_final_ratings(self):
+        instruction_Prompt = self.instructions["EvalStatement_Priv"] + "\n"
+        count = 1
+        for statement in self.statements:
+            instruction_Prompt += str(count) + ".) " + statement + "\n"
+            count += 1
+        for agent in self.agents:
+            response = agent.get_response(instruction_Prompt)
+        
+            statementRatings = get_integer_ratings(self.statements, response)
+            agent.set_FinalEvaluations(statementRatings)
+
+    def get_final_vote_by_condition(self):
         pass
+
 
 
 
@@ -49,12 +80,16 @@ class trialExecution():
         for agent in self.agents:
             self.generate_Instruction_Prompt(agent)
 
+        self.discussion()
+        self.get_final_ratings()
+
 
 statements = statementDoc.statements
-condition = "Hierarchy"
+condition = "Council"
 instructions = instructionDoc.conditionDictionary
 observations = observationDoc.observationList
 agents = agentGen.generate_n_agents(2, "GEMINI", observations, condition)
 
 trial = trialExecution(agents, condition, statements, instructions)
 trial.run_1_trial()
+print(agents[0].context["Context"])

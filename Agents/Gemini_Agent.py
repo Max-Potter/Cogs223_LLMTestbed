@@ -34,11 +34,11 @@ class gem_Agent():
     def set_Observations(self, observations):
         self.context["Observations"] = observations
 
-    def set_InitialEvaluations(self, statements, evaluations):
-        self.context["Initial Evaluations"] = {statements[x]:evaluations[x] for x in range(len(statements))}
+    def set_InitialEvaluations(self, statementRatings):
+        self.context["Initial Evaluations"] = statementRatings
 
-    def set_FinalEvaluations(self, statements, evaluations):
-        self.context["Final Evaluations"] = {statements[x]:evaluations[x] for x in range(len(statements))}
+    def set_FinalEvaluations(self, statementRatings):
+        self.context["Final Evaluations"] = statementRatings
 
     def update_Context(self, newContext):
         self.context["Context"] = self.context["Context"] + "\n" + newContext
@@ -52,7 +52,7 @@ class gem_Agent():
         )
         formatted_For_Context = "\n" + "Your Response: " + response.text + "\n"
         self.update_Context(formatted_For_Context)
-        print("Context: ", self.context["Context"])
+        #print("Context: ", self.context["Context"])
         return response.text
 
     #def store_context(self):
