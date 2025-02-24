@@ -16,6 +16,7 @@ class trialExecution():
         self.condition = condition
         self.instructions = instructions
         self.statements = statements
+        self.finalVote = {}
 
     def generate_Instruction_Prompt(self, agent):
         instruction_Prompt = self.instructions["InitInstruction"][agent.condition] + "\n"
@@ -68,7 +69,23 @@ class trialExecution():
             agent.set_FinalEvaluations(statementRatings)
 
     def get_final_vote_by_condition(self):
-        pass
+        if self.condition == "Council":
+            prompt = """You will now all collectively vote for the final ratings of each statement. The decision will be by majority vote. Please vote for the likelihood of each statement now."""
+            for agent in self.agents:
+                agent.update_Context(prompt)
+            i = 0
+            for agent in self.agents:
+                votingAgent = self.agents[i]
+                other_agents = self.agents[:i]+self.agents[i+1:]
+                prompt = "\n It is now your turn to vote. Respond ONLY with integers between 0 and 10 to rate the likelihood of each statement, and separate each integer with a space.\n"
+                response = votingAgent.get_response(prompt + " You are Person " + str(i))
+                formattedResponse = "Person " + str(i) + "'s response: " + response
+                statementRatings = get_integer_ratings(self.statements, response)
+                self.finalVote["Person " + str(i)] = statementRatings
+
+                for agent in other_agents:
+                    agent.update_Context(formattedResponse)
+                i += 1
 
 
 
@@ -82,6 +99,8 @@ class trialExecution():
 
         self.discussion()
         self.get_final_ratings()
+        self.get_final_vote_by_condition()
+        print(self.finalVote)
 
 
 statements = statementDoc.statements
