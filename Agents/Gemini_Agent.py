@@ -1,6 +1,7 @@
 import os
 from dotenv import load_dotenv, dotenv_values
 from google import genai
+import time
 
 
 
@@ -46,10 +47,25 @@ class gem_Agent():
     def get_response(self, intText):
         self.update_Context(intText)
         #self.context["Context"] = self.context["Context"] + "\n" + intText
-        response = self.client.models.generate_content(
-            model = self.model,
-            contents = self.context["Context"]
-        )
+        try:
+            response = self.client.models.generate_content(
+                model = self.model,
+                contents = self.context["Context"]
+            )
+        except:
+            try:
+                print("sleeping zzzz")
+                time.sleep(65)
+                print("woke up")
+                response = self.client.models.generate_content(
+                    model = self.model,
+                    contents = self.context["Context"]
+                )
+            except:
+                #print("Wait a day!")
+                raise Exception("Wait a day!")
+
+
         formatted_For_Context = "\n" + "Your Response: " + response.text + "\n"
         self.update_Context(formatted_For_Context)
         #print("Context: ", self.context["Context"])

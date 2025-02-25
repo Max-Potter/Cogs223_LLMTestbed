@@ -1,7 +1,10 @@
 import os
 import re
+import pandas as pd
+import datetime
+import json
 
-from HelperFuncs.regexExtractions import get_integer_ratings
+from HelperFuncs.regexExtractions import get_integer_ratings, get_date_now, get_average_vote
 import Instructions.instructions as instructionDoc
 import Instructions.statements as statementDoc
 import Instructions.observations as observationDoc
@@ -11,12 +14,86 @@ import Agents.agentGeneration as agentGen
 class trialExecution():
     #agents -- list [] of all agents
     #condition -- condition
-    def __init__(self, agents, condition, statements, instructions):
-        self.agents = agents
+    def __init__(self, condition, agentType, numAgents = 6):
+        #self.agents = agents
+        self.agentType = agentType
+        self.numAgents = numAgents
+        self.statements = statementDoc.statements
+        self.instructions = instructionDoc.conditionDictionary
+        self.observations = observationDoc.observationList
+
         self.condition = condition
-        self.instructions = instructions
-        self.statements = statements
+        self.agents = agentGen.generate_n_agents(self.numAgents, self.agentType, self.observations, self.condition)
+        self.finalVote = []
+        
+
+    def reinit(self, condition = None, agentType = None, numAgents = None):
+        if condition != None:
+            self.condition = condition
+        if agentType != None:
+            self.agentType = agentType
+        if numAgents != None:
+            self.numAgents = numAgents
+        self.agents = agentGen.generate_n_agents(self.numAgents, self.agentType, self.observations, self.condition)
         self.finalVote = {}
+
+    def format_Data_for_Export(self):
+        
+       
+        #dataDictionary = {
+        #condition = pd.Series([self.condition], name = 'condition'),
+        #agentType = pd.Series([self.agentType], name = 'agentType'),
+        #initEvals = pd.Series([[list(agent.context["Initial Evaluations"].values()) for agent in self.agents]], name = 'initialEvals'),
+        #finalEvals = pd.Series([[list(agent.context["Final Evaluations"].values()) for agent in self.agents]], name = 'finalEvals'),
+        #groupDecision = pd.Series([self.finalVote], name='groupDecision'),
+        #agentContext = pd.Series([[agent.context for agent in self.agents]], name = 'agentContext'),
+        #}
+        dataDictionary = {
+            'condition': self.condition,
+            'agentType': self.agentType,
+            'initEvals': [list(agent.context["Initial Evaluations"].values()) for agent in self.agents],
+            'finalEvals': [list(agent.context["Final Evaluations"].values()) for agent in self.agents],
+            'groupDecision': self.finalVote,
+            'agentContext': [agent.context for agent in self.agents],
+        }
+        #record = [
+        #          [self.condition], 
+        #          [self.agentType], 
+        #          [agent.context["Observations"] for agent in self.agents],
+        #          [list(agent.context["Initial Evaluations"].values()) for agent in self.agents], 
+        #          [list(agent.context["Final Evaluations"].values()) for agent in self.agents],
+        #          [self.finalVote],
+                  #[agent.context for agent in self.agents],
+        #          ]
+        #i = 1
+        #for entry in record:
+        #    print(i)
+        #    print(entry)
+        #    i += 1
+            
+        #print(record[6], len(record))
+        #columnNames = [
+        #    'condition',
+        #    'agentType',
+        #    'agentObservations',
+        #    'initEvals',
+        #    'finalEvals',
+        #    'finalVote',
+        #    'catch',
+            #'context',
+        #]
+
+        #supplementaryData = {"Agent " + str(i): self.agents[i].context for i in range(len(self.agents))}
+        #supplementaryData = pd.DataFrame([agent.context for agent in self.agents])
+        #dataDictionary = pd.json_normalize(dataDictionary)
+        #dataDF = pd.concat([condition, agentType, initEvals, finalEvals, groupDecision, agentContext], axis=1)
+        #dataDF = pd.DataFrame.from_dict(dataDictionary)
+        #dataDF = pd.DataFrame.from_records(record, columns = columnNames)
+        #dataDF = dataDF.transpose
+        #suppDataDF = pd.DataFrame(supplementaryData)
+        
+        return dataDictionary #suppDataDF
+
 
     def generate_Instruction_Prompt(self, agent):
         instruction_Prompt = self.instructions["InitInstruction"][agent.condition] + "\n"
@@ -70,10 +147,11 @@ class trialExecution():
 
     def get_final_vote_by_condition(self):
         if self.condition == "Council":
-            prompt = """You will now all collectively vote for the final ratings of each statement. The decision will be by majority vote. Please vote for the likelihood of each statement now."""
+            prompt = """You will now all collectively vote for the final ratings of each statement. The decision will be the average of all your votes. Please vote for the likelihood of each statement now."""
             for agent in self.agents:
                 agent.update_Context(prompt)
             i = 0
+            allVotes = []
             for agent in self.agents:
                 votingAgent = self.agents[i]
                 other_agents = self.agents[:i]+self.agents[i+1:]
@@ -81,11 +159,19 @@ class trialExecution():
                 response = votingAgent.get_response(prompt + " You are Person " + str(i))
                 formattedResponse = "Person " + str(i) + "'s response: " + response
                 statementRatings = get_integer_ratings(self.statements, response)
-                self.finalVote["Person " + str(i)] = statementRatings
+                vote = list(statementRatings.values())
+                allVotes.append(vote)
+                #self.finalVote["Person " + str(i)] = statementRatings
 
                 for agent in other_agents:
                     agent.update_Context(formattedResponse)
                 i += 1
+            averageVotes = get_average_vote(allVotes)
+            self.finalVote = averageVotes
+
+
+
+
 
 
 
@@ -100,15 +186,42 @@ class trialExecution():
         self.discussion()
         self.get_final_ratings()
         self.get_final_vote_by_condition()
-        print(self.finalVote)
+        #print(self.finalVote)
+        data = self.format_Data_for_Export()
+        return data
+    
+    def run_n_trials(self, n, testTrial = False):
+        fileName = ""
+        if testTrial:
+            fileName += "TESTRUN_"
+        now = get_date_now()
+        fileName += now + "_" + str(self.condition) + ".csv"
+        
+        records = []
+        for i in range(n):
+            newData = self.run_1_trial()
+            records.append(newData)
+            self.reinit()
+
+           
+        columnNames = [
+            'condition',
+            'agentType',
+            'initEvals',
+            'finalEvals',
+            'groupDecision',
+            'agentContext',
+        ]
+        df = pd.DataFrame.from_records(records, columns = columnNames)
+        df.to_csv(fileName, encoding='utf-8', index=False)
+        #suppDf.to_csv("Supplementary_" + fileName, encoding='utf-8', index=False)
+        return
+        
 
 
-statements = statementDoc.statements
+
 condition = "Council"
-instructions = instructionDoc.conditionDictionary
-observations = observationDoc.observationList
-agents = agentGen.generate_n_agents(2, "GEMINI", observations, condition)
 
-trial = trialExecution(agents, condition, statements, instructions)
-trial.run_1_trial()
-print(agents[0].context["Context"])
+
+trial = trialExecution(condition, "GEMINI", numAgents=2)
+trial.run_n_trials(2, testTrial = True)
