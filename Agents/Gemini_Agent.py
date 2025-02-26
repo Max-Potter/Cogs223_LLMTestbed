@@ -17,7 +17,10 @@ class gem_Agent():
 
    
     def __init__(self):
-        self.key = os.getenv("GEMINI_KEY")
+        try:
+            self.key = os.getenv("GEMINI_KEY")
+        except:
+            raise Exception("MISSING API KEY -- See README file for explanation")
         self.client = genai.Client(api_key = self.key)
         self.model = "gemini-2.0-flash"
         self.condition = None
