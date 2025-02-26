@@ -47,6 +47,7 @@ class trialExecution():
         dataDictionary = {
             'condition': self.condition,
             'agentType': self.agentType,
+            'observations': [agent.context['Observations'] for agent in self.agents],
             'initEvals': [list(agent.context["Initial Evaluations"].values()) for agent in self.agents],
             'finalEvals': [list(agent.context["Final Evaluations"].values()) for agent in self.agents],
             'groupDecision': self.finalVote,
@@ -137,6 +138,20 @@ class trialExecution():
                     formattedResponse = "\n" + "Person " + str(i) + "'s response: " + response
                     for agent in other_agents:
                         agent.update_Context(formattedResponse)
+
+        elif self.condition == "Hierarchy":
+            leader = None
+            others = []
+            for i in range(len(self.agents)):
+                currAgent = self.agents[i]
+                if currAgent.condition == "Hierarchy_L":
+                    leader = currAgent
+                else:
+                    others.append(currAgent)
+
+            
+
+                
 
             
             
@@ -248,6 +263,7 @@ class trialExecution():
         columnNames = [
             'condition',
             'agentType',
+            'observations',
             'initEvals',
             'finalEvals',
             'groupDecision',
