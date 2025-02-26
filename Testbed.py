@@ -3,6 +3,8 @@ import re
 import pandas as pd
 import datetime
 import json
+import numpy as np
+import math
 
 from HelperFuncs.regexExtractions import get_integer_ratings, get_date_now, get_average_vote
 import Instructions.instructions as instructionDoc
@@ -23,6 +25,7 @@ class trialExecution():
         self.observations = observationDoc.observationList
 
         self.condition = condition
+        self.additionalInfo = None
         self.agents = agentGen.generate_n_agents(self.numAgents, self.agentType, self.observations, self.condition)
         self.finalVote = []
         
@@ -34,65 +37,26 @@ class trialExecution():
             self.agentType = agentType
         if numAgents != None:
             self.numAgents = numAgents
+
+        self.additionalInfo = None
         self.agents = agentGen.generate_n_agents(self.numAgents, self.agentType, self.observations, self.condition)
         self.finalVote = {}
 
     def format_Data_for_Export(self):
-        
-       
-        #dataDictionary = {
-        #condition = pd.Series([self.condition], name = 'condition'),
-        #agentType = pd.Series([self.agentType], name = 'agentType'),
-        #initEvals = pd.Series([[list(agent.context["Initial Evaluations"].values()) for agent in self.agents]], name = 'initialEvals'),
-        #finalEvals = pd.Series([[list(agent.context["Final Evaluations"].values()) for agent in self.agents]], name = 'finalEvals'),
-        #groupDecision = pd.Series([self.finalVote], name='groupDecision'),
-        #agentContext = pd.Series([[agent.context for agent in self.agents]], name = 'agentContext'),
-        #}
+    
         dataDictionary = {
             'condition': self.condition,
             'agentType': self.agentType,
             'initEvals': [list(agent.context["Initial Evaluations"].values()) for agent in self.agents],
             'finalEvals': [list(agent.context["Final Evaluations"].values()) for agent in self.agents],
             'groupDecision': self.finalVote,
-            'agentContext': [agent.context for agent in self.agents],
+            'additionalInfo': self.additionalInfo
+            #'agentContext': [agent.context for agent in self.agents],
         }
-        #record = [
-        #          [self.condition], 
-        #          [self.agentType], 
-        #          [agent.context["Observations"] for agent in self.agents],
-        #          [list(agent.context["Initial Evaluations"].values()) for agent in self.agents], 
-        #          [list(agent.context["Final Evaluations"].values()) for agent in self.agents],
-        #          [self.finalVote],
-                  #[agent.context for agent in self.agents],
-        #          ]
-        #i = 1
-        #for entry in record:
-        #    print(i)
-        #    print(entry)
-        #    i += 1
-            
-        #print(record[6], len(record))
-        #columnNames = [
-        #    'condition',
-        #    'agentType',
-        #    'agentObservations',
-        #    'initEvals',
-        #    'finalEvals',
-        #    'finalVote',
-        #    'catch',
-            #'context',
-        #]
-
-        #supplementaryData = {"Agent " + str(i): self.agents[i].context for i in range(len(self.agents))}
-        #supplementaryData = pd.DataFrame([agent.context for agent in self.agents])
-        #dataDictionary = pd.json_normalize(dataDictionary)
-        #dataDF = pd.concat([condition, agentType, initEvals, finalEvals, groupDecision, agentContext], axis=1)
-        #dataDF = pd.DataFrame.from_dict(dataDictionary)
-        #dataDF = pd.DataFrame.from_records(record, columns = columnNames)
-        #dataDF = dataDF.transpose
-        #suppDataDF = pd.DataFrame(supplementaryData)
         
-        return dataDictionary #suppDataDF
+        
+        
+        return dataDictionary 
 
 
     def generate_Instruction_Prompt(self, agent):
@@ -117,7 +81,7 @@ class trialExecution():
     def discussion(self, rounds = 2):
         if self.condition == "Council":
             eligible_agents = self.agents
-            discussion_Prompt = "\n" + self.instructions["DiscussInstruction"]["Council"] +"\n"
+            discussion_Prompt = "\n" + self.instructions["DiscussInstruction"][self.condition] +"\n"
             for agent in eligible_agents:
                 agent.update_Context(discussion_Prompt)
             for round in range(rounds):
@@ -131,6 +95,54 @@ class trialExecution():
                     formattedResponse = "\n" + "Person " + str(i) + "'s response: " + response
                     for agent in other_agents:
                         agent.update_Context(formattedResponse)
+
+        elif self.condition == "Community":
+            agents_per_community = math.floor(self.numAgents/2)
+            indicesSelected = np.random.choice(self.numAgents,agents_per_community, replace=False)
+            indicesSelected = [int(index) for index in indicesSelected]
+            otherIndices = [index for index in range(self.numAgents) if index not in indicesSelected]
+            self.additionalInfo = (indicesSelected, otherIndices)
+            
+            ##Community 1 Discussion
+            eligible_agents = [self.agents[i] for i in indicesSelected]
+            discussion_Prompt = "\n" + self.instructions["DiscussInstruction"][self.condition] +"\n"
+            for agent in eligible_agents:
+                agent.update_Context(discussion_Prompt)
+            for round in range(rounds):
+                print("Round " + str(round+1))
+                prompt = "It is your turn to speak"
+                for i in range(len(eligible_agents)):
+                    turn_at_talk_agent = eligible_agents[i]
+                    other_agents = eligible_agents[:i]+eligible_agents[i+1:]
+
+                    response = turn_at_talk_agent.get_response(prompt + ". You are Person " + str(i))
+                    formattedResponse = "\n" + "Person " + str(i) + "'s response: " + response
+                    for agent in other_agents:
+                        agent.update_Context(formattedResponse)
+
+            #Community 2 Discussion
+            eligible_agents = [self.agents[i] for i in otherIndices]
+            discussion_Prompt = "\n" + self.instructions["DiscussInstruction"][self.condition] +"\n"
+        
+            for agent in eligible_agents:
+                agent.update_Context(discussion_Prompt)
+            for round in range(rounds):
+                print("Round " + str(round+1))
+                prompt = "It is your turn to speak"
+                for i in range(len(eligible_agents)):
+                    turn_at_talk_agent = eligible_agents[i]
+                    other_agents = eligible_agents[:i]+eligible_agents[i+1:]
+
+                    response = turn_at_talk_agent.get_response(prompt + ". You are Person " + str(i))
+                    formattedResponse = "\n" + "Person " + str(i) + "'s response: " + response
+                    for agent in other_agents:
+                        agent.update_Context(formattedResponse)
+
+            
+            
+
+
+
 
 
     def get_final_ratings(self):
@@ -168,6 +180,35 @@ class trialExecution():
                 i += 1
             averageVotes = get_average_vote(allVotes)
             self.finalVote = averageVotes
+        elif self.condition == "Community":
+            prompt = """You will now vote for the final ratings of each statement within your community. The decision will be the average of all your votes. Please vote for the likelihood of each statement now."""
+            for agent in self.agents:
+                agent.update_Context(prompt)
+            allVotes = [[],[]]
+            z = 0
+            for indexList in self.additionalInfo:
+                i = 0
+                eligible_agents = [self.agents[j] for j in indexList]
+                for agent in eligible_agents:
+                    votingAgent = eligible_agents[i]
+                    other_agents = eligible_agents[:i]+eligible_agents[i+1:]
+                    prompt = "\n It is now your turn to vote. Respond ONLY with integers between 0 and 10 to rate the likelihood of each statement, and separate each integer with a space.\n"
+                    response = votingAgent.get_response(prompt + " You are Person " + str(i))
+                    formattedResponse = "Person " + str(i) + "'s response: " + response
+                    statementRatings = get_integer_ratings(self.statements, response)
+                    vote = list(statementRatings.values())
+                    allVotes[z].append(vote)
+                    #self.finalVote["Person " + str(i)] = statementRatings
+
+                    for agent in other_agents:
+                        agent.update_Context(formattedResponse)
+                    i += 1
+                z += 1
+
+            averageVote_community1, averageVote_community2 = get_average_vote(allVotes[0]), get_average_vote(allVotes[1])
+            self.finalVote = [averageVote_community1, averageVote_community2]
+            
+    
 
 
 
@@ -210,7 +251,8 @@ class trialExecution():
             'initEvals',
             'finalEvals',
             'groupDecision',
-            'agentContext',
+            'additionalInfo',
+            #'agentContext',
         ]
         df = pd.DataFrame.from_records(records, columns = columnNames)
         df.to_csv(fileName, encoding='utf-8', index=False)
@@ -220,8 +262,8 @@ class trialExecution():
 
 
 
-condition = "Council"
+condition = "Community"
 
 
-trial = trialExecution(condition, "GEMINI", numAgents=2)
+trial = trialExecution(condition, "GEMINI", numAgents=6)
 trial.run_n_trials(2, testTrial = True)

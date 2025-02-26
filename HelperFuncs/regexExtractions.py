@@ -1,4 +1,5 @@
 import re
+import numpy as np
 import datetime
 
 def get_integer_ratings(statements, responseText):
@@ -27,5 +28,4 @@ def get_average_vote(votes):
     average = [average[i]/len(votes) for i in range(len(average))]
     
     return average
-        
 
