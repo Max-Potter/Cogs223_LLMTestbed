@@ -43,6 +43,8 @@ class trialExecution():
         self.agents = agentGen.generate_n_agents(self.numAgents, self.agentType, self.observations, self.condition)
         self.finalVote = {}
 
+
+
     def format_Data_for_Export(self):
     
         dataDictionary = {
@@ -165,6 +167,9 @@ class trialExecution():
                     formattedResponse = "\n boss " + leader.name + "'s response: " + response
                     agent.update_Context(formattedResponse)
 
+        elif self.condition == "Baseline":
+            return
+
 
             
 
@@ -257,6 +262,16 @@ class trialExecution():
             statementRatings = get_integer_ratings(self.statements, response)
             vote = list(statementRatings.values())
             self.finalVote = vote
+        elif self.condition == "Baseline":
+            prompt = "You will now officially lock in your ratings for each statement. Response ONLY with integers between 0 and 10 to rate the likelihood of each statement, and separate each integer with a space. \n"
+            allVotes = []
+            for agent in self.agents:
+                response = agent.get_response(prompt)
+                statementRatings = get_integer_ratings(self.statements, response)
+                vote = list(statementRatings.values())
+                allVotes.append(vote)
+            averageVotes = get_average_vote(allVotes)
+            self.finalVote = averageVotes
                     #for agenta in eligible_agents:
                     #    print(agenta.name)
                     #print(votedName, agent.name)
@@ -349,7 +364,7 @@ class trialExecution():
 
 
 
-condition = "Hierarchy"
+condition = "Baseline"
 
 
 trial = trialExecution(condition, "GEMINI", numAgents=3)

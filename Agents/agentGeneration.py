@@ -7,6 +7,8 @@ from Agents.Gemini_Agent import gem_Agent
 
 def generate_n_agents(n, model_type, observations, condition, observationsPerAgent = 2, possible_names = ["Gary", "Steven", "Anne", "Jenny", "Charles", "Lucille"]):
     agents = []
+    if condition == "Baseline":
+        observationsPerAgent = 12
     if model_type == "GEMINI":
         for i in range(n):
             agents.append(gem_Agent())
