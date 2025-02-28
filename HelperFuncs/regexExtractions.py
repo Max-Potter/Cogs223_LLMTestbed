@@ -1,6 +1,7 @@
 import re
 import numpy as np
 import datetime
+import operator
 
 def get_integer_ratings(statements, responseText):
     integers = re.findall(r"\s*([0-9]+)\s*", responseText)
@@ -15,6 +16,10 @@ def get_date_now():
     #year, month, day, time = now.strftime("%Y"), now.strftime("%m"), now.strftime("%d"), now.strftime("%H:%M:%S")
     #nowString = year + "_" + month + "_" + day + "_" + time + "_"
     return nowString
+
+def get_Voted_Person(response):
+    vote = re.findall(r"^[a-zA-Z]+$", response)
+    return vote
 
 def get_average_vote(votes):
 

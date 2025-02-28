@@ -5,7 +5,7 @@ import numpy as np
 from Agents.Gemini_Agent import gem_Agent
 #from Deepseek_Agent import deep_Agent
 
-def generate_n_agents(n, model_type, observations, condition, observationsPerAgent = 2):
+def generate_n_agents(n, model_type, observations, condition, observationsPerAgent = 2, possible_names = ["Gary", "Steven", "Anne", "Jenny", "Charles", "Lucille"]):
     agents = []
     if model_type == "GEMINI":
         for i in range(n):
@@ -18,10 +18,15 @@ def generate_n_agents(n, model_type, observations, condition, observationsPerAge
         print("Invalid")
         return
     
+    namesList = np.random.choice(n, n, replace=False)
+    i=0
     for agent in agents:
         sampledObservations = random.sample(observations, observationsPerAgent)
         agent.set_Observations(sampledObservations)
         agent.set_Condition(condition)
+        agent.set_Name(possible_names[namesList[i]])
+        i+=1
+        
 
     if condition == "Hierarchy":
         leader = np.random.randint(0, len(agents))

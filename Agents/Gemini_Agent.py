@@ -35,6 +35,9 @@ class gem_Agent():
     def set_Condition(self, condition):
         self.condition = condition
 
+    def set_Name(self, name):
+        self.name = name
+
     def set_Observations(self, observations):
         self.context["Observations"] = observations
 

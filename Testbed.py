@@ -5,8 +5,9 @@ import datetime
 import json
 import numpy as np
 import math
+import operator
 
-from HelperFuncs.regexExtractions import get_integer_ratings, get_date_now, get_average_vote
+from HelperFuncs.regexExtractions import get_integer_ratings, get_date_now, get_average_vote, get_Voted_Person
 import Instructions.instructions as instructionDoc
 import Instructions.statements as statementDoc
 import Instructions.observations as observationDoc
@@ -51,8 +52,8 @@ class trialExecution():
             'initEvals': [list(agent.context["Initial Evaluations"].values()) for agent in self.agents],
             'finalEvals': [list(agent.context["Final Evaluations"].values()) for agent in self.agents],
             'groupDecision': self.finalVote,
-            'additionalInfo': self.additionalInfo
-            #'agentContext': [agent.context for agent in self.agents],
+            'additionalInfo': self.additionalInfo,
+            #'agentContext': [agent.context['Context'] for agent in self.agents],
         }
         
         
@@ -92,8 +93,8 @@ class trialExecution():
                     turn_at_talk_agent = eligible_agents[i]
                     other_agents = eligible_agents[:i]+eligible_agents[i+1:]
 
-                    response = turn_at_talk_agent.get_response(prompt + ". You are Person " + str(i))
-                    formattedResponse = "\n" + "Person " + str(i) + "'s response: " + response
+                    response = turn_at_talk_agent.get_response(prompt + ". You are " + turn_at_talk_agent.name)
+                    formattedResponse = "\n" + turn_at_talk_agent.name + "'s response: " + response
                     for agent in other_agents:
                         agent.update_Context(formattedResponse)
 
@@ -116,8 +117,8 @@ class trialExecution():
                     turn_at_talk_agent = eligible_agents[i]
                     other_agents = eligible_agents[:i]+eligible_agents[i+1:]
 
-                    response = turn_at_talk_agent.get_response(prompt + ". You are Person " + str(i))
-                    formattedResponse = "\n" + "Person " + str(i) + "'s response: " + response
+                    response = turn_at_talk_agent.get_response(prompt + ". You are " + turn_at_talk_agent.name)
+                    formattedResponse = "\n" + turn_at_talk_agent.name + "'s response: " + response
                     for agent in other_agents:
                         agent.update_Context(formattedResponse)
 
@@ -134,20 +135,38 @@ class trialExecution():
                     turn_at_talk_agent = eligible_agents[i]
                     other_agents = eligible_agents[:i]+eligible_agents[i+1:]
 
-                    response = turn_at_talk_agent.get_response(prompt + ". You are Person " + str(i))
-                    formattedResponse = "\n" + "Person " + str(i) + "'s response: " + response
+                    response = turn_at_talk_agent.get_response(prompt + ". You are " + turn_at_talk_agent.name)
+                    formattedResponse = "\n" + turn_at_talk_agent.name + "'s response: " + response
                     for agent in other_agents:
                         agent.update_Context(formattedResponse)
 
         elif self.condition == "Hierarchy":
             leader = None
             others = []
+            self.additionalInfo = [[],[]]
             for i in range(len(self.agents)):
                 currAgent = self.agents[i]
                 if currAgent.condition == "Hierarchy_L":
                     leader = currAgent
+                    self.additionalInfo[0].append(i)
                 else:
                     others.append(currAgent)
+                    self.additionalInfo[1].append(i)
+                currAgent.update_Context("\n" + self.instructions["DiscussInstruction"][currAgent.condition] + "\n")
+            for agent in others:
+                for round in range(rounds):
+                    print("Round " + str(round+1))
+                    prompt = "It is your turn to speak"
+                    response = agent.get_response(prompt + ". You are employee " + agent.name)
+                    formattedResponse = "\n employee " + agent.name + "'s response: " + response
+                    leader.update_Context(formattedResponse)
+
+                    response = leader.get_response(prompt + ". You are boss " + leader.name)
+                    formattedResponse = "\n boss " + leader.name + "'s response: " + response
+                    agent.update_Context(formattedResponse)
+
+
+            
 
             
 
@@ -183,8 +202,8 @@ class trialExecution():
                 votingAgent = self.agents[i]
                 other_agents = self.agents[:i]+self.agents[i+1:]
                 prompt = "\n It is now your turn to vote. Respond ONLY with integers between 0 and 10 to rate the likelihood of each statement, and separate each integer with a space.\n"
-                response = votingAgent.get_response(prompt + " You are Person " + str(i))
-                formattedResponse = "Person " + str(i) + "'s response: " + response
+                response = votingAgent.get_response(prompt + " You are " + votingAgent.name)
+                formattedResponse = votingAgent.name + "'s response: " + response
                 statementRatings = get_integer_ratings(self.statements, response)
                 vote = list(statementRatings.values())
                 allVotes.append(vote)
@@ -196,32 +215,79 @@ class trialExecution():
             averageVotes = get_average_vote(allVotes)
             self.finalVote = averageVotes
         elif self.condition == "Community":
-            prompt = """You will now vote for the final ratings of each statement within your community. The decision will be the average of all your votes. Please vote for the likelihood of each statement now."""
-            for agent in self.agents:
-                agent.update_Context(prompt)
-            allVotes = [[],[]]
-            z = 0
+            prompt = """You will now privately vote for a representative for your community. This representative will vote with the representative from the other community to decide the ratings for each statement. You can not vote for yourself. Type ONLY the name of the person you want to vote for, and include nothing else in your response."""
+            representatives = []
             for indexList in self.additionalInfo:
                 i = 0
                 eligible_agents = [self.agents[j] for j in indexList]
+                votes = {agent.name: 0 for agent in eligible_agents}
                 for agent in eligible_agents:
-                    votingAgent = eligible_agents[i]
-                    other_agents = eligible_agents[:i]+eligible_agents[i+1:]
-                    prompt = "\n It is now your turn to vote. Respond ONLY with integers between 0 and 10 to rate the likelihood of each statement, and separate each integer with a space.\n"
-                    response = votingAgent.get_response(prompt + " You are Person " + str(i))
-                    formattedResponse = "Person " + str(i) + "'s response: " + response
-                    statementRatings = get_integer_ratings(self.statements, response)
-                    vote = list(statementRatings.values())
-                    allVotes[z].append(vote)
+                    successfulVote = False
+                    vote = agent.get_response(prompt + " You are " + agent.name + "\n")
+                    votedName = get_Voted_Person(vote)[0]
+                    while successfulVote == False:
+                        if votedName in votes:
+                            votes[votedName] = votes[votedName] + 1
+                            successfulVote = True
+                            print(agent.name + " voted for: " + votedName)
+                        else:
+                            vote = agent.get_response("\n You have not voted for an eligible person. Please vote again, responding with ONLY the name of the person you are voting for.")
+                            votedName = get_Voted_Person(vote)[0]
+                            print("invalid vote")
+                VotedAgent = max(votes.items(), key=operator.itemgetter(1))[0]
+                print("Final Vote: " + VotedAgent)
+                representatives.append(VotedAgent)
+            allVotes = []
+            for representative in representatives:
+                selectedAgent = [agent for agent in self.agents if agent.name == representative][0]
+                print(selectedAgent.name)
+                prompt = "\n You have been selected as the representative for your community. It is now your turn to vote for the likelihood of each of the 4 statements discussed. Respond ONLY with integers between 0 and 10 to rate the likelihood of each statement, and separate each integer with a space."
+                response = selectedAgent.get_response(prompt + " You are " + selectedAgent.name)
+                #formattedResponse = selectedAgent.name + "'s response: " + response
+                statementRatings = get_integer_ratings(self.statements, response)
+                vote = list(statementRatings.values())
+                allVotes.append(vote)
+            averageVotes = get_average_vote(allVotes)
+            self.finalVote = averageVotes
+        elif self.condition == "Hierarchy":
+            index = self.additionalInfo[0][0]
+            leader = self.agents[index]
+            prompt = "As the boss, you will now decide the final ratings for each statement for your team. Respond ONLY with integers between 0 and 10 to rate the likelihood of each statement, and separate each integer with a space.\n"
+            response = leader.get_response(prompt)
+            statementRatings = get_integer_ratings(self.statements, response)
+            vote = list(statementRatings.values())
+            self.finalVote = vote
+                    #for agenta in eligible_agents:
+                    #    print(agenta.name)
+                    #print(votedName, agent.name)
+                    
+
+            #prompt = """You will now vote for the final ratings of each statement within your community. The decision will be the average of all your votes. Please vote for the likelihood of each statement now."""
+            #for agent in self.agents:
+            #    agent.update_Context(prompt)
+            #allVotes = [[],[]]
+            #z = 0
+            #for indexList in self.additionalInfo:
+            #    i = 0
+            #    eligible_agents = [self.agents[j] for j in indexList]
+            #    for agent in eligible_agents:
+            #        votingAgent = eligible_agents[i]
+            #        other_agents = eligible_agents[:i]+eligible_agents[i+1:]
+            #        prompt = "\n It is now your turn to vote. Respond ONLY with integers between 0 and 10 to rate the likelihood of each statement, and separate each integer with a space.\n"
+            #        response = votingAgent.get_response(prompt + " You are Person " + str(i))
+            #        formattedResponse = "Person " + str(i) + "'s response: " + response
+            #        statementRatings = get_integer_ratings(self.statements, response)
+            #        vote = list(statementRatings.values())
+            #        allVotes[z].append(vote)
                     #self.finalVote["Person " + str(i)] = statementRatings
 
-                    for agent in other_agents:
-                        agent.update_Context(formattedResponse)
-                    i += 1
-                z += 1
+            #        for agent in other_agents:
+            #            agent.update_Context(formattedResponse)
+            #        i += 1
+            #    z += 1
 
-            averageVote_community1, averageVote_community2 = get_average_vote(allVotes[0]), get_average_vote(allVotes[1])
-            self.finalVote = [averageVote_community1, averageVote_community2]
+            #averageVote_community1, averageVote_community2 = get_average_vote(allVotes[0]), get_average_vote(allVotes[1])
+            #self.finalVote = [averageVote_community1, averageVote_community2]
             
     
 
@@ -233,7 +299,7 @@ class trialExecution():
 
 
 
-    def run_1_trial(self):
+    def run_1_trial(self, verbose = False, run = 0):
          ###Flow: Init instruction + observations --> statement instruction + statements --> init rating
     ###  --> discuss instruction --> final rating --> vote
         for agent in self.agents:
@@ -244,9 +310,14 @@ class trialExecution():
         self.get_final_vote_by_condition()
         #print(self.finalVote)
         data = self.format_Data_for_Export()
+        if verbose == True:
+            now = get_date_now()
+            fileName = now + "_run=" + str(run) + "_" + str(self.condition) + ".txt"
+            with open(fileName, 'w') as text_file:
+                text_file.write(str([agent.context['Context'] for agent in self.agents]))
         return data
     
-    def run_n_trials(self, n, testTrial = False):
+    def run_n_trials(self, n, testTrial = False, verbose = False):
         fileName = ""
         if testTrial:
             fileName += "TESTRUN_"
@@ -255,7 +326,7 @@ class trialExecution():
         
         records = []
         for i in range(n):
-            newData = self.run_1_trial()
+            newData = self.run_1_trial(verbose = verbose, run = i)
             records.append(newData)
             self.reinit()
 
@@ -278,8 +349,15 @@ class trialExecution():
 
 
 
-condition = "Community"
+condition = "Hierarchy"
 
 
-trial = trialExecution(condition, "GEMINI", numAgents=6)
-trial.run_n_trials(2, testTrial = True)
+trial = trialExecution(condition, "GEMINI", numAgents=3)
+trial.run_n_trials(2, testTrial = True, verbose=True)
+##May update community to be voting for a representative, then those two vote and are averaged?
+
+##Settle on observations and statements
+
+##Update: Replace Person 'i' with explicit names for community voting
+
+#Verbose tag for outputting agent.context data
