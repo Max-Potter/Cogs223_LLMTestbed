@@ -89,7 +89,7 @@ class trialExecution():
             for agent in eligible_agents:
                 agent.update_Context(discussion_Prompt)
             for round in range(rounds):
-                print("Round " + str(round+1))
+                #print("Round " + str(round+1))
                 prompt = "It is your turn to speak"
                 for i in range(len(eligible_agents)):
                     turn_at_talk_agent = eligible_agents[i]
@@ -113,7 +113,7 @@ class trialExecution():
             for agent in eligible_agents:
                 agent.update_Context(discussion_Prompt)
             for round in range(rounds):
-                print("Round " + str(round+1))
+                #print("Round " + str(round+1))
                 prompt = "It is your turn to speak"
                 for i in range(len(eligible_agents)):
                     turn_at_talk_agent = eligible_agents[i]
@@ -131,7 +131,7 @@ class trialExecution():
             for agent in eligible_agents:
                 agent.update_Context(discussion_Prompt)
             for round in range(rounds):
-                print("Round " + str(round+1))
+                #print("Round " + str(round+1))
                 prompt = "It is your turn to speak"
                 for i in range(len(eligible_agents)):
                     turn_at_talk_agent = eligible_agents[i]
@@ -157,7 +157,7 @@ class trialExecution():
                 currAgent.update_Context("\n" + self.instructions["DiscussInstruction"][currAgent.condition] + "\n")
             for agent in others:
                 for round in range(rounds):
-                    print("Round " + str(round+1))
+                    #print("Round " + str(round+1))
                     prompt = "It is your turn to speak"
                     response = agent.get_response(prompt + ". You are employee " + agent.name)
                     formattedResponse = "\n employee " + agent.name + "'s response: " + response
@@ -234,18 +234,18 @@ class trialExecution():
                         if votedName in votes:
                             votes[votedName] = votes[votedName] + 1
                             successfulVote = True
-                            print(agent.name + " voted for: " + votedName)
+                            #print(agent.name + " voted for: " + votedName)
                         else:
                             vote = agent.get_response("\n You have not voted for an eligible person. Please vote again, responding with ONLY the name of the person you are voting for.")
                             votedName = get_Voted_Person(vote)[0]
                             print("invalid vote")
                 VotedAgent = max(votes.items(), key=operator.itemgetter(1))[0]
-                print("Final Vote: " + VotedAgent)
+                #print("Final Vote: " + VotedAgent)
                 representatives.append(VotedAgent)
             allVotes = []
             for representative in representatives:
                 selectedAgent = [agent for agent in self.agents if agent.name == representative][0]
-                print(selectedAgent.name)
+                #print(selectedAgent.name)
                 prompt = "\n You have been selected as the representative for your community. It is now your turn to vote for the likelihood of each of the 4 statements discussed. Respond ONLY with integers between 0 and 10 to rate the likelihood of each statement, and separate each integer with a space."
                 response = selectedAgent.get_response(prompt + " You are " + selectedAgent.name)
                 #formattedResponse = selectedAgent.name + "'s response: " + response
@@ -333,15 +333,33 @@ class trialExecution():
         return data
     
     def run_n_trials(self, n, testTrial = False, verbose = False):
-        fileName = ""
+        fileName = "Data/"
         if testTrial:
-            fileName += "TESTRUN_"
+            fileName += "test_trials/TESTRUN_"
+        else:
+            fileName += "real_runs/"
         now = get_date_now()
         fileName += now + "_" + str(self.condition) + ".csv"
         
         records = []
         for i in range(n):
-            newData = self.run_1_trial(verbose = verbose, run = i)
+            #newData = self.run_1_trial(verbose = verbose, run = i)
+            successfulRun = False
+            attempts = 0
+            while successfulRun == False:
+                try:
+                    newData = self.run_1_trial(verbose = verbose, run = i)
+                    successfulRun = True
+                    print("Completed run " + str(i))
+                except:
+                    self.reinit()
+                    attempts += 1
+                    if attempts < 8:
+                        print("Errored run " + str(i) + ", retrying -- attempt # " + str(attempts))
+                    else:
+                        print("Errored run " + str(i) + ", terminating")
+                        raise Exception("Could not complete run")
+                
             records.append(newData)
             self.reinit()
 
@@ -354,7 +372,6 @@ class trialExecution():
             'finalEvals',
             'groupDecision',
             'additionalInfo',
-            #'agentContext',
         ]
         df = pd.DataFrame.from_records(records, columns = columnNames)
         df.to_csv(fileName, encoding='utf-8', index=False)
@@ -363,18 +380,22 @@ class trialExecution():
         
 
 n = 10
-conditions = ["Baseline","Council","Community","Hierarchy"]
+conditions = [
+    #"Baseline",
+    "Council",
+    "Community",
+    "Hierarchy"
+    ]
 agentTypes = ["GEMINI"]
 verbose = False
 testTrial = False
 
 for condition in conditions:
     for agent in agentTypes:
-        try:
-            trial = trialExecution(condition, agent, numAgents = 6)
-            trial.run_n_trials(n, testTrial = testTrial, verbose = verbose)
-        except:
-            print("error")
+        print("Condition: " + str(condition) +"\n", "Agent Type: " + str(agent) +"\n")
+        trial = trialExecution(condition, agent, numAgents = 6)
+        trial.run_n_trials(n, testTrial = testTrial, verbose = verbose)
+
 
 #condition = "Council"
 
