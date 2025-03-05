@@ -362,13 +362,25 @@ class trialExecution():
         return
         
 
+n = 10
+conditions = ["Baseline","Council","Community","Hierarchy"]
+agentTypes = ["GEMINI"]
+verbose = False
+testTrial = False
+
+for condition in conditions:
+    for agent in agentTypes:
+        try:
+            trial = trialExecution(condition, agent, numAgents = 6)
+            trial.run_n_trials(n, testTrial = testTrial, verbose = verbose)
+        except:
+            print("error")
+
+#condition = "Council"
 
 
-condition = "Baseline"
-
-
-trial = trialExecution(condition, "GEMINI", numAgents=3)
-trial.run_n_trials(2, testTrial = True, verbose=True)
+#trial = trialExecution(condition, "GEMINI", numAgents=6)
+#trial.run_n_trials(2, testTrial = False, verbose=True)
 ##May update community to be voting for a representative, then those two vote and are averaged?
 
 ##Settle on observations and statements

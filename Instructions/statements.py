@@ -1,8 +1,8 @@
 import os
 
 statements = [
-        "John cares deeply about his children",
         "John is more concerned with his finances than his health",
-        "John is not very careful and often makes mistakes",
-        "John does not like distractions such as television or video games",
+        "John is cautious, but will take risks if he believes the reward is worth it",
+        "John cares deeply about the friends and family in his life, and would go out of his way to help others when he can",
+        "John is prone to distractions, and struggles with procrastination"
     ]
