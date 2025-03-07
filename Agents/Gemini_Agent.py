@@ -68,7 +68,7 @@ class gem_Agent():
                     contents = self.context["Context"]
                 )
             except:
-                #print("Wait a day!")
+                print("Wait a day!")
                 raise Exception("Wait a day!")
 
 
