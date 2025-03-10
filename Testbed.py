@@ -358,7 +358,7 @@ class trialExecution():
                         print("Errored run " + str(i) + ", retrying -- attempt # " + str(attempts))
                     else:
                         print("Errored run " + str(i) + ", terminating")
-                        raise Exception("Could not complete run")
+                        raise Exception("Could not complete run -- check API Usage")
                 
             records.append(newData)
             self.reinit()
