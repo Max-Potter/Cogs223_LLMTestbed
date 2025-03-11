@@ -82,7 +82,7 @@ class trialExecution():
         agent.set_InitialEvaluations(statementRatings)
         
 
-    def discussion(self, rounds = 2):
+    def discussion(self, rounds = 3):
         if self.condition == "Council":
             eligible_agents = self.agents
             discussion_Prompt = "\n" + self.instructions["DiscussInstruction"][self.condition] +"\n"
@@ -379,7 +379,7 @@ class trialExecution():
         return
         
 
-n = 5
+n = 15
 conditions = [
     "Baseline",
     "Council",
