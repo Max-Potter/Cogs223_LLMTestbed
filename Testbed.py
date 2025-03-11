@@ -379,9 +379,9 @@ class trialExecution():
         return
         
 
-n = 10
+n = 5
 conditions = [
-    #"Baseline",
+    "Baseline",
     "Council",
     "Community",
     "Hierarchy"
